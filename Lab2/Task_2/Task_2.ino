@@ -43,7 +43,7 @@ void loop() {
     if (receivedChars[0] == 'S') {
        float motorVoltage = String(receivedChars).substring(1).toFloat();
        Serial.print(motorVoltage);
-       Serial.print(" motor voltage");
+       Serial.println(" motor voltage");
       } else if (receivedChars[0] == 'A'){
        float steerAngle = String(receivedChars).substring(1).toFloat();
        analogWrite(12, steerAngle);
