@@ -27,8 +27,8 @@ float proportional, integral, derivative, setpoint, error = 0; // PID variables
 
 // PID parameters (example values right now)
 float Kp = 14;
-float Ki = 3;
-float Kd = 3;
+float Ki = 0;
+float Kd = 0;
 
 unsigned long lastTime = 0; // used in calcPID
 float previous_error = 0; // used in calcPID
@@ -63,7 +63,9 @@ void loop() {
   Serial.println(" throttle");
   newPulse=false;
   }
-  calcPID(setSpeed, speed);
+  if(setSpeed !=0 && millis()- lastTime> 0.05){
+    calcPID(setSpeed, speed);
+  }
   // Set speed
   //analogWrite(13, throttle);
   int pwm = map(throttle, 0, 255, 1500, 2000);
@@ -82,6 +84,7 @@ void loop() {
        }
        lastTime = millis();
        timeSincePulse = millis();
+       integral=0;
       } else if (receivedChars[0] == 'A'){
        steerAngle = String(receivedChars).substring(1).toFloat();
        //analogWrite(12, steerAngle);
@@ -147,12 +150,14 @@ void calcPID(float setpoint, float speed) {
 
   // prevent integral windup
   integral = constrain(integral, -100, 100);
-
+  Serial.print(integral);
+  Serial.println(" integral");
   derivative = (error - previous_error) / dt;
 
   float output = Kp * error + Ki * integral + Kd * derivative;
-
-  output = constrain(output, 50, 255);
+  Serial.print(output);
+  Serial.println(" wanted throttle");
+  output = constrain(output, 55, 255);
 
   // apply output for next timestep
   throttle = output;
