@@ -17,7 +17,7 @@ const float circumference=0.118*PI;
 float throttle = 0;
 boolean newPulse = false;
 volatile float steerAngle = 100;
-
+volatile float setSpeed = 0;
 
 Servo steerServo;  // create servo object to control a servo
 Servo motorServo;
@@ -26,14 +26,13 @@ Servo motorServo;
 float proportional, integral, derivative, setpoint, error = 0; // PID variables
 
 // PID parameters (example values right now)
-float Kp = 1.5;
-float Ki = 0.5;
-float Kd = 0.1;
+float Kp = 3;
+float Ki = 0;
+float Kd = 0;
 
 unsigned long lastTime = 0; // used in calcPID
 float previous_error = 0; // used in calcPID
 
-float throttle = 0;
 
 
 void setup() {
@@ -60,6 +59,9 @@ void loop() {
   Serial.print("Speed: ");
   Serial.print(speed);
   Serial.println(" m/s");
+  calcPID(setSpeed, speed);
+  Serial.print(throttle);
+  Serial.println(" throttle");
   newPulse=false;
   }
   // Set speed
@@ -70,9 +72,14 @@ void loop() {
   recvWithEndMarker();
   if (newData == true) {
     if (receivedChars[0] == 'S') {
-       throttle = String(receivedChars).substring(1).toFloat();
-       Serial.print(throttle);
-       Serial.println(" motor throttle");
+       setSpeed = String(receivedChars).substring(1).toFloat();
+       Serial.print(setSpeed);
+       Serial.println(" set speed");
+       if(setSpeed != 0) {
+        throttle=55;
+       } else {
+        throttle=0;
+       }
       } else if (receivedChars[0] == 'A'){
        steerAngle = String(receivedChars).substring(1).toFloat();
        //analogWrite(12, steerAngle);
@@ -130,9 +137,9 @@ void calcPID(float setpoint, float speed) {
   if (dt <= 0) return;
 
   // replace with sensor reading
-  measured_speed = speed;
+  float measured_speed = speed;
 
-  error = setpoint - measured_speed;
+  float error = setpoint - measured_speed;
 
   integral += error * dt;
 
