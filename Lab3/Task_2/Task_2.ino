@@ -27,13 +27,26 @@ float proportional, integral, derivative, setpoint, error = 0; // PID variables
 
 // PID parameters (example values right now)
 float Kp = 14;
-float Ki = 0;
-float Kd = 0;
+float Ki = 3;
+float Kd = 1;
 
 unsigned long lastTime = 0; // used in calcPID
 float previous_error = 0; // used in calcPID
 
+float speedHistory[5] = {0, 0, 0, 0, 0};
+int speedIndex = 0;
 
+float addSpeedAndGetAverage(float newSpeed) {
+    speedHistory[speedIndex] = newSpeed;
+    speedIndex = (speedIndex + 1) % 5;
+
+    float sum = 0;
+    for (int i = 0; i < 5; i++) {
+        sum += speedHistory[i];
+    }
+
+    return sum / 5.0;
+}
 
 void setup() {
   Serial.begin(9600);
@@ -54,18 +67,20 @@ void setup() {
 void loop() {
   // Print the current count to the Serial Monitor
   if(newPulse){
-  Serial.print("Total activations: ");
-  Serial.println(pulseCount);
-  Serial.print("Speed: ");
-  Serial.print(speed);
-  Serial.println(" m/s");
-  Serial.print(throttle);
-  Serial.println(" throttle");
-  newPulse=false;
+    Serial.print("Total activations: ");
+    Serial.println(pulseCount);
+    Serial.print("Speed: ");
+    Serial.print(speed);
+    Serial.println(" m/s");
+    Serial.print(throttle);
+    Serial.println(" throttle");
+    newPulse=false;
+    float avgSpeed = addSpeedAndGetAverage(speed);
+    if(setSpeed !=0 ){//&& millis()- lastTime> 0.05){
+      calcPID(setSpeed, avgSpeed);
+    }
   }
-  if(setSpeed !=0 && millis()- lastTime> 0.05){
-    calcPID(setSpeed, speed);
-  }
+  
   // Set speed
   //analogWrite(13, throttle);
   int pwm = map(throttle, 0, 255, 1500, 2000);
@@ -84,7 +99,6 @@ void loop() {
        }
        lastTime = millis();
        timeSincePulse = millis();
-       integral=0;
       } else if (receivedChars[0] == 'A'){
        steerAngle = String(receivedChars).substring(1).toFloat();
        //analogWrite(12, steerAngle);
