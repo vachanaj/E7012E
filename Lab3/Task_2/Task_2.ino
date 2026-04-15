@@ -26,9 +26,9 @@ Servo motorServo;
 float proportional, integral, derivative, setpoint, error = 0; // PID variables
 
 // PID parameters (example values right now)
-float Kp = 3;
-float Ki = 0;
-float Kd = 0;
+float Kp = 14;
+float Ki = 3;
+float Kd = 3;
 
 unsigned long lastTime = 0; // used in calcPID
 float previous_error = 0; // used in calcPID
@@ -59,11 +59,11 @@ void loop() {
   Serial.print("Speed: ");
   Serial.print(speed);
   Serial.println(" m/s");
-  calcPID(setSpeed, speed);
   Serial.print(throttle);
   Serial.println(" throttle");
   newPulse=false;
   }
+  calcPID(setSpeed, speed);
   // Set speed
   //analogWrite(13, throttle);
   int pwm = map(throttle, 0, 255, 1500, 2000);
@@ -80,6 +80,8 @@ void loop() {
        } else {
         throttle=0;
        }
+       lastTime = millis();
+       timeSincePulse = millis();
       } else if (receivedChars[0] == 'A'){
        steerAngle = String(receivedChars).substring(1).toFloat();
        //analogWrite(12, steerAngle);
@@ -150,7 +152,7 @@ void calcPID(float setpoint, float speed) {
 
   float output = Kp * error + Ki * integral + Kd * derivative;
 
-  output = constrain(output, 0, 255);
+  output = constrain(output, 50, 255);
 
   // apply output for next timestep
   throttle = output;
