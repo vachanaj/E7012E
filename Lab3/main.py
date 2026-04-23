@@ -9,8 +9,11 @@ ser.flush()
 try:
     while True:
         # Send data to Arduino
-        ser.write(b"Ping from Rock 4\n")
-        
+        input1 = input()
+        encoded = bytes(str(input1)+"\n", "utf-8")
+    
+        ser.write(encoded)
+        time.sleep(10)
         # Read response back
         if ser.in_waiting > 0:
             line = ser.readline().decode('utf-8').rstrip()

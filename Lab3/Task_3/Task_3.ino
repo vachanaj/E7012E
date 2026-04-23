@@ -35,7 +35,7 @@ void loop() {
       steerServo.write(steerAngle);
       response = response + ", Updated angle";
     }
-    
+    response = response + "\n";
     
     // Send the response back to the Rock 4
     Serial.println(response);
