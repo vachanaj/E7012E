@@ -44,7 +44,7 @@ def labelImage(output):
 
         hsv = cv2.cvtColor(output, cv2.COLOR_BGR2HSV)
 
-        for i in range(len(circles[0])):
+        for i in range(min(5,len(circles[0]))):
             x, y, r = circles[0][i]
 
             # Create mask for the circle
@@ -60,10 +60,11 @@ def labelImage(output):
             v = pixels[:, 2]
 
             # Only consider sufficiently saturated pixels (ignore gray/white)
-            valid = s > 50
+            valid = s > 40
             h = h[valid]
 
             if len(h) == 0:
+                continue
                 label = "Unknown"
                 color = (255, 255, 255)
             else:
@@ -71,17 +72,18 @@ def labelImage(output):
                 # Measure color variation (std deviation across channels)
                 std_dev = np.std(pixels, axis=0)
                 mean_std = np.mean(std_dev)
-                if mean_std >40:
+                if mean_std >30:
                     continue
                 mean_h = np.mean(h)
 
-                if (mean_h < 25) or (mean_h > 170):
+                if (mean_h < 30) or (mean_h > 170):
                     label = "Red"
                     color = (0, 0, 255)
                 elif 35 < mean_h < 100:
                     label = "Green"
                     color = (0, 255, 0)
                 else:
+                    continue
                     label = "Other"
                     color = (255, 0, 0)
             #label += str(mean_h)
