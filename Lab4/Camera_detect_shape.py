@@ -22,13 +22,15 @@ def labelImage(output):
         dp=1,
         minDist=100,
         param1=100,
-        param2=50,
-        minRadius=30,
+        param2=60,
+        minRadius=50,
         maxRadius=200
     )
 
     if circles is not None:
         circles = np.uint16(np.around(circles))
+
+        hsv = cv2.cvtColor(output, cv2.COLOR_BGR2HSV)
 
         for i in range(len(circles[0])):
             x, y, r = circles[0][i]
@@ -37,33 +39,44 @@ def labelImage(output):
             mask = np.zeros(gray.shape, dtype=np.uint8)
             cv2.circle(mask, (x, y), r, 255, -1)
 
-            # Extract pixel values inside the circle
-            pixels = output[mask == 255]
+            # Extract HSV pixels inside circle
+            pixels = hsv[mask == 255]
 
-            # Measure color variation (std deviation across channels)
-            std_dev = np.std(pixels, axis=0)
-            mean_std = np.mean(std_dev)
+            # Split channels
+            h = pixels[:, 0]
+            s = pixels[:, 1]
+            v = pixels[:, 2]
 
-            # Threshold for "uniform color" (tune this!)
-            if mean_std < 30:
-                color = (0, 255, 0)  # Green = uniform
-                #label = str(mean_std)
-                label = "Uniform"
-                # Draw circle
-                cv2.circle(output, (x, y), r, color, 2)
-                cv2.circle(output, (x, y), 2, (255, 0, 0), 3)
+            # Only consider sufficiently saturated pixels (ignore gray/white)
+            valid = s > 50
+            h = h[valid]
+
+            if len(h) == 0:
+                label = "Unknown"
+                color = (255, 255, 255)
             else:
-                color = (0, 0, 255)  # Red = not uniform
-                #label = str(mean_std)
-                label = "Not uniform"
+                # Red wraps around HSV (two ranges!)
+                red_pixels = np.sum((h < 10) | (h > 170))
+                green_pixels = np.sum((h > 35) & (h < 85))
 
+                if red_pixels > 0.6 * len(h):
+                    label = "Red"
+                    color = (0, 0, 255)
+                elif green_pixels > 0.6 * len(h):
+                    label = "Green"
+                    color = (0, 255, 0)
+                else:
+                    label = "Other"
+                    color = (255, 0, 0)
 
+            # Draw result
+            cv2.circle(output, (x, y), r, color, 2)
+            cv2.circle(output, (x, y), 2, (255, 255, 255), 3)
 
-            # Optional: put label
-            #cv2.putText(output, label, (x - 40, y - r - 10),
-            #            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+            cv2.putText(output, label, (x - 40, y - r - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-        #print(len(circles[0]))
+        print(len(circles[0]))
 
     return output
 
