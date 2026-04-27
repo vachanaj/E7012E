@@ -96,7 +96,7 @@ def labelImage(output):
 
             cv2.putText(output, label, (x - 40, y - r - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-
+            return output
         #print(len(circles[0]))
 
     return output
