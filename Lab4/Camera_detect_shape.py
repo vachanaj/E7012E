@@ -55,20 +55,24 @@ def labelImage(output):
                 label = "Unknown"
                 color = (255, 255, 255)
             else:
-                # Red wraps around HSV (two ranges!)
-                red_pixels = np.sum((h < 10) | (h > 170))
-                green_pixels = np.sum((h > 35) & (h < 85))
 
-                if red_pixels > 0.6 * len(h):
+                # Measure color variation (std deviation across channels)
+                std_dev = np.std(pixels, axis=0)
+                mean_std = np.mean(std_dev)
+                if mean_std >30:
+                    continue
+                mean_h = np.mean(h)
+
+                if (mean_h < 10) or (mean_h > 170):
                     label = "Red"
                     color = (0, 0, 255)
-                elif green_pixels > 0.6 * len(h):
+                elif 25 < mean_h < 100:
                     label = "Green"
                     color = (0, 255, 0)
                 else:
                     label = "Other"
                     color = (255, 0, 0)
-
+            label+= str(mean_std)
             # Draw result
             cv2.circle(output, (x, y), r, color, 2)
             cv2.circle(output, (x, y), 2, (255, 255, 255), 3)
