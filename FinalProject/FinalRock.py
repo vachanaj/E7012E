@@ -139,6 +139,7 @@ try:
         #    break
 except KeyboardInterrupt:
     # Release the capture and writer objects
+    ser.write(b'S0\n')
     cam.release()
     ser.close()
 
