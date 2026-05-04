@@ -27,8 +27,8 @@ float proportional, integral, derivative, setpoint, error = 0; // PID variables
 
 // PID parameters (example values right now)
 float Kp = 14;
-float Ki = 3;
-float Kd = 1;
+float Ki = 1;
+float Kd = 0.1;
 
 unsigned long lastTime = 0; // used in calcPID
 float previous_error = 0; // used in calcPID
@@ -63,7 +63,7 @@ volatile float avgMidpointAngle = 100;
 
 float Aproportional, Aintegral, Aderivative, Asetpoint, Aerror = 0; // PID variables
 
-// PID parameters (example values right now)
+// PID parameters for Stearing (example values right now)
 float AKp = 1;
 float AKi = 3;
 float AKd = 1;
@@ -149,6 +149,8 @@ void loop() {
     distanceL = durationL * 0.034 / 2;
   }
 
+  //added to sensors do not interfere
+  delayMicroseconds(10); 
   //for Right
   digitalWrite(trigR, HIGH);
   delayMicroseconds(10); 
@@ -163,6 +165,7 @@ void loop() {
   } 
   else {
     distanceR = durationR * 0.034 / 2;
+        //Serial.println(distanceR);
   }
 
   //Calculating midpoint
@@ -170,14 +173,17 @@ void loop() {
 
   float avgMidpoint = addMidpointAndGetAverage(distancemidpoint);
 
+
+
   float setMidpoint = 0;
 
   calcPIDAngle(setMidpoint, avgMidpoint);
 
+  //Serial.println(avgMidpointAngle);
+  float AngleAmplification = 15;
+
+  avgMidpointAngle = (avgMidpointAngle)*AngleAmplification-90*(AngleAmplification-1); //scaling cuz servo stupido
   Serial.println(avgMidpointAngle);
-
-  avgMidpointAngle = (avgMidpointAngle - 27.5)/2; //scaling cuz servo stupido
-
  
   steerServo.write(avgMidpointAngle);
 
@@ -209,7 +215,7 @@ void loop() {
        Serial.print(setSpeed);
        Serial.println(" set speed");
        if(setSpeed != 0) {
-        throttle=55;
+        throttle=50;
        } else {
         throttle=0;
        }
@@ -280,15 +286,15 @@ void calcPID(float setpoint, float speed) {
   integral += error * dt;
 
   // prevent integral windup
-  integral = constrain(integral, -100, 100);
-  Serial.print(integral);
-  Serial.println(" integral");
+  integral = constrain(integral, -10, 10);
+  //Serial.print(integral);
+  //Serial.println(" integral");
   derivative = (error - previous_error) / dt;
 
   float output = Kp * error + Ki * integral + Kd * derivative;
-  Serial.print(output);
-  Serial.println(" wanted throttle");
-  output = constrain(output, 55, 255);
+  //Serial.print(output);
+  //Serial.println(" wanted throttle");
+  output = constrain(output, 0, 255);
 
   // apply output for next timestep
   throttle = output;
@@ -308,25 +314,27 @@ void calcPIDAngle(float setmidpoint, float midpoint) {
   // replace with sensor reading
   float measured_midpoint = midpoint;
 
-  float error = setmidpoint - measured_midpoint;
+  Aerror = setmidpoint - measured_midpoint;
 
-  integral += error * dt;
+  integral += Aerror * dt;
 
   // prevent integral windup
   integral = constrain(integral, -100, 100);
  // Serial.print(integral);
  // Serial.println(" integral");
-  derivative = (error - Aprevious_error) / dt;
+  derivative = (Aerror - Aprevious_error) / dt;
 
   //float output = Kp * error + Ki * integral + Kd * derivative;
-  float output = Kp * error;
+  float output = AKp * Aerror;
 
+  
 
-  avgMidpointAngle = (output + 646)*255/1292 +127.5; //scales from max input to 0-255
+  avgMidpointAngle = (output + 646)*50/1292+65; //scales from max input to 65-115 
+  //avgMidpointAngle = map(output, -646, 646, 65, 115)
 
    //Serial.println(avgMidpointAngle);
 
-  Serial.println(" wanted 0-255 angle:");
+  //Serial.println(" wanted 0-255 angle:");
   // Serial.print(avgMidpointAngle);
   avgMidpointAngle = constrain(avgMidpointAngle, 0, 255);
   
