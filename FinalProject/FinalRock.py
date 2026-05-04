@@ -1,6 +1,12 @@
 import cv2
 import numpy as np
+import serial
+import time
 
+# Initialize serial connection
+# Ensure the port matches your 'ls /dev/ttyACM*' output
+ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
+ser.flush()
 # Open the default camera
 cam = cv2.VideoCapture(0, cv2.CAP_V4L2)
 #cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
@@ -101,31 +107,40 @@ def labelImage(output):
 
 cur_speed = 0
 started= False
+try:
+    while True:
+        ret, frame = cam.read()
 
-while True:
-    ret, frame = cam.read()
-
-    # Write the frame to the output file
-    #if cv2.waitKey(1) == ord('x'):
-    #    #out.write(frame)
-    #    cv2.imwrite("snap.jpg",frame)
-    #    print("Image saved")
-    (frame, color, dist) = labelImage(frame)
-    # Display the captured frame
-    #cv2.imshow('Camera', frame)
-    if(color != "none"):
-        if(color == "Green" and not started):
-            started= True
-            print("Start signal received")
-            print(color+ ": "+str(dist))
-        elif (color == "Red" and started):
-            started = False
-            print("Stopping")
-            print(color+ ": "+str(dist))
-    # Press 'q' to exit the loop
-    #if cv2.waitKey(1) == ord('q'):
-    #    break
-
+        # Write the frame to the output file
+        #if cv2.waitKey(1) == ord('x'):
+        #    #out.write(frame)
+        #    cv2.imwrite("snap.jpg",frame)
+        #    print("Image saved")
+        (frame, color, dist) = labelImage(frame)
+        # Display the captured frame
+        #cv2.imshow('Camera', frame)
+        if(color != "none"):
+            if(color == "Green" and not started):
+                started= True
+                print("Start signal received")
+                print(color+ ": "+str(dist))
+                ser.write(b'S0.01\n')
+            elif (color == "Red" and started):
+                started = False
+                print("Stopping")
+                print(color+ ": "+str(dist))
+                ser.write(b'S0\n')
+        # Read response back
+        if ser.in_waiting > 0:
+            line = ser.readline().decode('utf-8').rstrip()
+            print(f"Received: {line}")
+        # Press 'q' to exit the loop
+        #if cv2.waitKey(1) == ord('q'):
+        #    break
+except KeyboardInterrupt:
+    # Release the capture and writer objects
+    cam.release()
+    ser.close()
 
 
 

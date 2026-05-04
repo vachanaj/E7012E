@@ -19,6 +19,5 @@ try:
             line = ser.readline().decode('utf-8').rstrip()
             print(f"Received: {line}")
             
-        time.sleep(1)
 except KeyboardInterrupt:
     ser.close()
