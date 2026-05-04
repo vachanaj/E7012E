@@ -20,4 +20,5 @@ try:
             print(f"Received: {line}")
             
 except KeyboardInterrupt:
+    ser.write(b'S0\n')
     ser.close()
