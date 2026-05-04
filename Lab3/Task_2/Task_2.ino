@@ -75,8 +75,8 @@ void loop() {
     Serial.print(throttle);
     Serial.println(" throttle");
     newPulse=false;
-    float avgSpeed = addSpeedAndGetAverage(speed);
     if(setSpeed !=0 ){//&& millis()- lastTime> 0.05){
+      float avgSpeed = addSpeedAndGetAverage(speed);
       calcPID(setSpeed, avgSpeed);
     }
   }
