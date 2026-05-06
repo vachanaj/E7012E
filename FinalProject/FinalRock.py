@@ -83,14 +83,14 @@ def labelImage(output):
 
                 if (mean_h < 30) or (mean_h > 170):
                     label = "Red"
-                    color = (0, 0, 255)
+                    #color = (0, 0, 255)
                 elif 35 < mean_h < 100:
                     label = "Green"
-                    color = (0, 255, 0)
+                    #color = (0, 255, 0)
                 else:
                     continue
-                    label = "Other"
-                    color = (255, 0, 0)
+                    #label = "Other"
+                    #color = (255, 0, 0)
             #label += str(mean_h)
             #label+= str(mean_std)
             distance = Distance_finder(focal_length, 15.5,r*2)
@@ -125,11 +125,13 @@ try:
                 print("Start signal received")
                 print(color+ ": "+str(dist))
                 ser.write(b'S0.01\n')
+                cur_speed =0.01
             elif (color == "Red" and started):
                 started = False
                 print("Stopping")
                 print(color+ ": "+str(dist))
                 ser.write(b'S0\n')
+                cur_speed=0
         # Read response back
         if ser.in_waiting > 0:
             line = ser.readline().decode('utf-8').rstrip()
