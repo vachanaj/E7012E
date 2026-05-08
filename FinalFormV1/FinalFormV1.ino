@@ -30,6 +30,10 @@ float Kp = 1;
 float Ki = 0;//3;
 float Kd = 0;//1;
 
+//gain scheduling
+float AKp_slow = 12;
+float AKp_fast = 8;
+
 unsigned long lastTime = 0; // used in calcPID
 float previous_error = 0; // used in calcPID
 
@@ -144,6 +148,14 @@ void calcPID(float setpoint, float speed) {
 // use this function in the loop of arduino program
 void calcPIDAngle(float setmidpoint, float midpoint) {
   //Serial.print(midpoint);
+  //gain scheduling
+  float currentKp;
+
+  if (speed < 3) {        // If slower than 3 m/s
+    currentKp = AKp_slow;
+  } else {                  // If driving fast
+    currentKp = AKp_fast;
+  }
   unsigned long currentTime = millis();
   float dt = (currentTime - AlastTime) / 1000.0; // seconds
 
@@ -162,8 +174,8 @@ void calcPIDAngle(float setmidpoint, float midpoint) {
   //Serial.println(" integral");
   Aderivative = (error - Aprevious_error) / dt;
 
-  //float output = AKp * error + AKi * Aintegral + AKd * Aderivative;
-  float output = AKp * error;
+  //float output = currentKp * error + AKi * Aintegral + AKd * Aderivative;
+  float output = currentKp * error;
 
   //avgMidpointAngle = (output + 646)*255/1292 +127.5; //scales from max input to 0-255
   avgMidpointAngle = (output + 646)*50/1292 +65; //scales from max input to 0-255
