@@ -95,137 +95,8 @@ float addSpeedAndGetAverage(float newSpeed) {
     return sum / 5.0;
 }
 
-void setup() {
-  Serial.begin(9600);
-  
-  //pinMode(13, OUTPUT); // The speed to ESC
-  motorServo.attach(13);
-  
-  steerServo.attach(12); // Steer angle 
-  pinMode(2, INPUT);   // The Interrupt pin (connected to 13)
-
-  // Attach interrupt to Pin 2
-  // RISING means trigger when the voltage goes from LOW to HIGH
-  attachInterrupt(digitalPinToInterrupt(2), countPulse, FALLING);
-  motorServo.writeMicroseconds(1500); // neutral
-
-    Serial.begin(9600);
-  steerServo.attach(12); // Steer angle 
-  motorServo.writeMicroseconds(1500); // neutral
-
-  pinMode(trigL, OUTPUT);
-  digitalWrite(trigL, LOW);
-  delayMicroseconds(2);
-  pinMode(echoL, INPUT);
-
-  pinMode(trigR, OUTPUT);
-  digitalWrite(trigR, LOW);
-  delayMicroseconds(2);
-  pinMode(echoR, INPUT);
-
-  pinMode(trigM, OUTPUT);
-  digitalWrite(trigM, LOW);
-  delayMicroseconds(2);
-  pinMode(echoM, INPUT);
-
-  delay(3000); // allow ESC to arm
-}
-
-void loop() {
-
-  //for Left
-  digitalWrite(trigL, HIGH);
-  delayMicroseconds(10); 
-  digitalWrite(trigL, LOW);
-
-  durationL = pulseIn(echoL, HIGH);
-
-  if (durationL >= 38000) {
-    Serial.println("Out of range");
-    durationL = 38000;
-    distanceL = durationL * 0.034 / 2;
-  } 
-  else {
-    distanceL = durationL * 0.034 / 2;
-  }
-
-  //for Right
-  digitalWrite(trigR, HIGH);
-  delayMicroseconds(10); 
-  digitalWrite(trigR, LOW);
-
-  durationR = pulseIn(echoR, HIGH);
-
-  if (durationR >= 38000) {
-    Serial.println("Out of range Right");
-    durationR = 38000;
-    distanceR = durationR * 0.034 / 2;
-  } 
-  else {
-    distanceR = durationR * 0.034 / 2;
-  }
-
-  //Calculating midpoint
-  distancemidpoint = (distanceR-distanceL)/2;
-
-  float avgMidpoint = addMidpointAndGetAverage(distancemidpoint);
-
-  float setMidpoint = 0;
-
-  calcPIDAngle(setMidpoint, avgMidpoint);
-
-  float AngleAmplification = 1;
-
-  avgMidpointAngle = (avgMidpointAngle)*AngleAmplification-90*(AngleAmplification-1); //scaling cuz servo stupido
-
-
-  //avgMidpointAngle = (avgMidpointAngle - 27.5)/2; //scaling cuz servo stupido
-  Serial.println(avgMidpointAngle);
-  avgMidpointAngle = constrain(avgMidpointAngle, 60, 120);
- 
-  steerServo.write(avgMidpointAngle);
-
-  // Print the current count to the Serial Monitor
-  if(newPulse){
-    Serial.print("Total activations: ");
-    Serial.println(pulseCount);
-    Serial.print("Speed: ");
-    Serial.print(speed);
-    Serial.println(" m/s");
-    Serial.print(throttle);
-    Serial.println(" throttle");
-    newPulse=false;
-  }
-
-  float avgSpeed = addSpeedAndGetAverage(speed);
-  if(setSpeed !=0 ){//&& millis()- lastTime> 0.05){
-    calcPID(setSpeed, avgSpeed);
-  }
- 
-  int pwm = map(throttle, 0, 255, 1500, 2000);
-  motorServo.writeMicroseconds(pwm);
-  
-  recvWithEndMarker();
-  if (newData == true) {
-    if (receivedChars[0] == 'S') {
-       setSpeed = String(receivedChars).substring(1).toFloat();
-       Serial.print(setSpeed);
-       Serial.println(" set speed");
-       if(setSpeed != 0) {
-        throttle=55;
-       } else {
-        throttle=0;
-       }
-       lastTime = millis();
-       timeSincePulse = millis();
-      } else if (receivedChars[0] == 'A'){
-       // steerAngle is only used when manually steering
-       steerAngle = String(receivedChars).substring(1).toFloat();
-       Serial.print(steerAngle);
-       Serial.println(" angle");
-      }
-    newData=false;
-  }
+void calcSpeed(float pulseTime) {
+  speed = circumference / (pulseTime*magCount);
 }
 
 // This function runs every time Pin 2 sees a RISING edge
@@ -237,36 +108,6 @@ void countPulse() {
   calcSpeed(pulseTime);
   newPulse=true;
 }
-
-void calcSpeed(float pulseTime) {
-  speed = circumference / (pulseTime*magCount);
-}
-
-void recvWithEndMarker() {
-    static byte ndx = 0;
-    char endMarker = '\n';
-    char rc;
-    
-    while (Serial.available() > 0 && newData == false) {
-        rc = Serial.read();
-
-        if (rc != endMarker) {
-            receivedChars[ndx] = rc;
-            ndx++;
-            if (ndx >= numChars) {
-                ndx = numChars - 1;
-                Serial.println("hej");
-            }
-        }
-        else {
-            receivedChars[ndx] = '\0'; // terminate the string
-            ndx = 0;
-            newData = true;
-        }
-    }
-    delay(100);
-}
-
 
 // use this function in the loop of arduino program
 void calcPID(float setpoint, float speed) {
@@ -284,13 +125,13 @@ void calcPID(float setpoint, float speed) {
 
   // prevent integral windup
   integral = constrain(integral, -100, 100);
-  Serial.print(integral);
-  Serial.println(" integral");
+  //Serial.print(integral);
+  //Serial.println(" integral");
   derivative = (error - previous_error) / dt;
 
   float output = Kp * error + Ki * integral + Kd * derivative;
-  Serial.print(output);
-  Serial.println(" wanted throttle");
+  //Serial.print(output);
+  //Serial.println(" wanted throttle");
   output = constrain(output, 55, 255);
 
   // apply output for next timestep
@@ -336,4 +177,143 @@ void calcPIDAngle(float setmidpoint, float midpoint) {
   Aprevious_error = error;
   AlastTime = currentTime;
 
+}
+
+void setup() {
+  // Using the Programming Port (Serial)
+  Serial.begin(115200); 
+  while (!Serial); // Wait for the port to connect  
+  //pinMode(13, OUTPUT); // The speed to ESC
+  motorServo.attach(13);
+  
+  steerServo.attach(12); // Steer angle 
+  pinMode(2, INPUT);   // The Interrupt pin (connected to 13)
+
+  // Attach interrupt to Pin 2
+  // RISING means trigger when the voltage goes from LOW to HIGH
+  attachInterrupt(digitalPinToInterrupt(2), countPulse, FALLING);
+  motorServo.writeMicroseconds(1500); // neutral
+
+  steerServo.attach(12); // Steer angle 
+  motorServo.writeMicroseconds(1500); // neutral
+
+  pinMode(trigL, OUTPUT);
+  digitalWrite(trigL, LOW);
+  delayMicroseconds(2);
+  pinMode(echoL, INPUT);
+
+  pinMode(trigR, OUTPUT);
+  digitalWrite(trigR, LOW);
+  delayMicroseconds(2);
+  pinMode(echoR, INPUT);
+
+  pinMode(trigM, OUTPUT);
+  digitalWrite(trigM, LOW);
+  delayMicroseconds(2);
+  pinMode(echoM, INPUT);
+
+  delay(3000); // allow ESC to arm
+  Serial.println("Starting\n");
+}
+
+void loop() {
+
+  //for Left
+  digitalWrite(trigL, HIGH);
+  delayMicroseconds(10); 
+  digitalWrite(trigL, LOW);
+
+  durationL = pulseIn(echoL, HIGH, 30000);
+
+  if (durationL >= 38000) {
+    //Serial.println("Left out of range");
+    durationL = 38000;
+    distanceL = durationL * 0.034 / 2;
+  } 
+  else {
+    distanceL = durationL * 0.034 / 2;
+  }
+
+  //for Right
+  digitalWrite(trigR, HIGH);
+  delayMicroseconds(10); 
+  digitalWrite(trigR, LOW);
+
+  durationR = pulseIn(echoR, HIGH, 30000);
+
+  if (durationR >= 38000) {
+    //Serial.println("Out of range Right");
+    durationR = 38000;
+    distanceR = durationR * 0.034 / 2;
+  } 
+  else {
+    distanceR = durationR * 0.034 / 2;
+  }
+
+  //Calculating midpoint
+  distancemidpoint = (distanceR-distanceL)/2;
+
+  float avgMidpoint = addMidpointAndGetAverage(distancemidpoint);
+
+  float setMidpoint = 0;
+
+  calcPIDAngle(setMidpoint, avgMidpoint);
+
+  float AngleAmplification = 1;
+
+  avgMidpointAngle = (avgMidpointAngle)*AngleAmplification-90*(AngleAmplification-1); //scaling cuz servo stupido
+
+
+  //avgMidpointAngle = (avgMidpointAngle - 27.5)/2; //scaling cuz servo stupido
+  //Serial.println(avgMidpointAngle);
+  avgMidpointAngle = constrain(avgMidpointAngle, 60, 120);
+ 
+  steerServo.write(avgMidpointAngle);
+
+  // Print the current count to the Serial Monitor
+  if(newPulse){
+    String response = "Speed: "+ String(speed)+"\n";
+    //Serial.print("Total activations: ");
+    //Serial.println(pulseCount);
+    //Serial.print("Speed: ");
+    //Serial.print(speed);
+    //Serial.println(" m/s");
+    //Serial.print(throttle);
+    //Serial.println(" throttle");
+    Serial.println(response);
+    newPulse=false;
+  }
+
+  float avgSpeed = addSpeedAndGetAverage(speed);
+  if(setSpeed !=0 ){//&& millis()- lastTime> 0.05){
+    calcPID(setSpeed, avgSpeed);
+  }
+ 
+  int pwm = map(throttle, 0, 255, 1500, 2000);
+  motorServo.writeMicroseconds(pwm);
+  
+  // Check if data is available from the Rock 4
+  if (Serial.available() > 0) {
+    // Read the incoming message until a newline character
+    String incoming = Serial.readStringUntil('\n');
+
+    // Create a response
+    String response = "Acknowledgment: I received [" + incoming + "]";
+    if (incoming[0] == 'S') {
+      setSpeed = String(incoming).substring(1).toFloat();
+      response = response + ", Updated speed";
+      if(setSpeed==0){
+        throttle=0;
+          motorServo.writeMicroseconds(1500);
+      }
+    } else if (incoming[0] == 'A'){
+      steerAngle = String(incoming).substring(1).toFloat();
+      steerServo.write(steerAngle);
+      response = response + ", Updated angle";
+    }
+    response = response + "\n";
+    
+    // Send the response back to the Rock 4
+    Serial.println(response);
+  }
 }

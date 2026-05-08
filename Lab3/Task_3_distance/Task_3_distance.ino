@@ -116,7 +116,8 @@ void loop() {
       Serial.println(" set distance");
       throttle=55;
       lastTime = millis();
-      timeSincePulse = millis(); 
+      timeSincePulse = millis();
+      distanceTravelled=0; 
     } else if (receivedChars[0] == 'A'){
       steerAngle = String(receivedChars).substring(1).toFloat();
       //analogWrite(12, steerAngle);
