@@ -36,11 +36,6 @@ float previous_error = 0; // used in calcPID
 float speedHistory[5] = {0, 0, 0, 0, 0};
 int speedIndex = 0;
 
-//distance traveled variables
-float targetDistance = 0;
-long startPulseCount = 0;
-bool distanceModeActive = false;
-
 float addSpeedAndGetAverage(float newSpeed) {
     speedHistory[speedIndex] = newSpeed;
     speedIndex = (speedIndex + 1) % 5;
@@ -52,6 +47,10 @@ float addSpeedAndGetAverage(float newSpeed) {
 
     return sum / 5.0;
 }
+
+volatile float distanceToTravel=0;
+volatile float distanceTravelled=0;
+volatile bool travelSetDistance=false;
 
 void setup() {
   Serial.begin(9600);
@@ -70,21 +69,6 @@ void setup() {
 }
 
 void loop() {
-
-  // 1. DISTANCE MONITORING
-  if (distanceModeActive) {
-    // Calculate distance traveled since the 'D' command was received
-    long currentPulses = pulseCount - startPulseCount;
-    float distanceTraveled = (currentPulses / (float)magCount) * circumference;
-
-    if (distanceTraveled >= targetDistance) {
-      setSpeed = 0;      // Tell PID to stop
-      throttle = 0;      // Force stop
-      distanceModeActive = false;
-      Serial.println("Distance reached. Stopping.");
-    }
-  }
-  
   // Print the current count to the Serial Monitor
   if(newPulse){
     Serial.print("Total activations: ");
@@ -95,54 +79,52 @@ void loop() {
     Serial.print(throttle);
     Serial.println(" throttle");
     newPulse=false;
+    if(travelSetDistance && distanceTravelled > distanceToTravel) {
+      setSpeed=0;
+      travelSetDistance=false;
+    } 
+    
     if(setSpeed !=0 ){//&& millis()- lastTime> 0.05){
       float avgSpeed = addSpeedAndGetAverage(speed);
       calcPID(setSpeed, avgSpeed);
     }
   }
-
+  
+  // Set speed
+  //analogWrite(13, throttle);
   int pwm = map(throttle, 0, 255, 1500, 2000);
   motorServo.writeMicroseconds(pwm);
   steerServo.write(steerAngle);
   recvWithEndMarker();
-  
-  // 2. UPDATED COMMAND HANDLING
   if (newData == true) {
-    if (receivedChars[0] == 'D') {
-      targetDistance = String(receivedChars).substring(1).toFloat();
-      startPulseCount = pulseCount; // Mark the starting point
-      distanceModeActive = true;
-      
-      // Set a default cruise speed for the distance drive
-      setSpeed = 0.1; // 1 m/s (Adjust as needed)
-      throttle = 70;
-      Serial.print("Target set to: ");
-      Serial.print(targetDistance);
-      Serial.println(" meters.");
-    } 
-    else if (receivedChars[0] == 'S') {
-      // Existing S command resets distance mode
-      distanceModeActive = false; 
+    if (receivedChars[0] == 'S') {
       setSpeed = String(receivedChars).substring(1).toFloat();
       Serial.print(setSpeed);
       Serial.println(" set speed");
       if(setSpeed != 0) {
-        throttle=55;
+      throttle=55;
       } else {
-        throttle=0;
+      throttle=0;
       }
       lastTime = millis();
-      timeSincePulse = millis();
-    } 
-    else if (receivedChars[0] == 'A'){
+      timeSincePulse = millis();    
+    } else if (receivedChars[0] == 'D'){
+      distanceToTravel = String(receivedChars).substring(1).toFloat();
+      setSpeed=0.1;
+      travelSetDistance = true;
+      Serial.print(distanceToTravel);
+      Serial.println(" set distance");
+      throttle=55;
+      lastTime = millis();
+      timeSincePulse = millis(); 
+    } else if (receivedChars[0] == 'A'){
       steerAngle = String(receivedChars).substring(1).toFloat();
       //analogWrite(12, steerAngle);
       Serial.print(steerAngle);
       Serial.println(" angle");
     }
-    newData = false;
+    newData=false;
   }
-  
 }
 
 // This function runs every time Pin 2 sees a RISING edge
@@ -153,11 +135,13 @@ void countPulse() {
   timeSincePulse = millis();
   calcSpeed(pulseTime);
   newPulse=true;
+  distanceTravelled += circumference / magCount;
 }
 
 void calcSpeed(float pulseTime) {
   speed = circumference / (pulseTime*magCount);
 }
+
 
 void recvWithEndMarker() {
     static byte ndx = 0;
