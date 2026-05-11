@@ -151,11 +151,11 @@ void calcPIDAngle(float setmidpoint, float midpoint) {
   //gain scheduling
   float currentKp;
 
-  if (speed < 3) {        // If slower than 3 m/s
+  /* if (speed < 3) {        // If slower than 3 m/s
     currentKp = AKp_slow;
   } else {                  // If driving fast
     currentKp = AKp_fast;
-  }
+  } */
   unsigned long currentTime = millis();
   float dt = (currentTime - AlastTime) / 1000.0; // seconds
 
@@ -174,8 +174,8 @@ void calcPIDAngle(float setmidpoint, float midpoint) {
   //Serial.println(" integral");
   Aderivative = (error - Aprevious_error) / dt;
 
-  //float output = currentKp * error + AKi * Aintegral + AKd * Aderivative;
-  float output = currentKp * error;
+  float output = AKp * error + AKi * Aintegral + AKd * Aderivative;
+  //float output = currentKp * error;
 
   //avgMidpointAngle = (output + 646)*255/1292 +127.5; //scales from max input to 0-255
   avgMidpointAngle = (output + 646)*50/1292 +65; //scales from max input to 0-255
@@ -308,24 +308,78 @@ void loop() {
   if (Serial.available() > 0) {
     // Read the incoming message until a newline character
     String incoming = Serial.readStringUntil('\n');
+    incoming.trim(); // Remove any stray spaces or carriage returns
 
-    // Create a response
-    String response = "Acknowledgment: I received [" + incoming + "]";
-    if (incoming[0] == 'S') {
-      setSpeed = String(incoming).substring(1).toFloat();
-      response = response + ", Updated speed";
-      if(setSpeed==0){
-        throttle=0;
-          motorServo.writeMicroseconds(1500);
-      }
-    } else if (incoming[0] == 'A'){
-      steerAngle = String(incoming).substring(1).toFloat();
-      steerServo.write(steerAngle);
-      response = response + ", Updated angle";
-    }
-    response = response + "\n";
+    String response = "Acknowledgment: [" + incoming + "]";
+
+    // --- SPEED COMMANDS ---
+    if (incoming.startsWith("SKP")) {
+        float kp_val = incoming.substring(3).toFloat();
+        Kp = kp_val; // Assign to your speed PID P variable
+        response += " - Speed KP updated";
+    } 
+    else if (incoming.startsWith("SKI")) {
+        float ki_val = incoming.substring(3).toFloat();
+        Ki = ki_val; // Assign to your speed PID I variable
+        response += " - Speed KI updated";
+    } 
+    else if (incoming.startsWith("SKD")) {
+        float kd_val = incoming.substring(3).toFloat();
+        Kd = kd_val; // Assign to your speed PID D variable
+        response += " - Speed KD updated";
+    } 
+    else if (incoming.startsWith("S")) {
+        setSpeed = incoming.substring(1).toFloat();
+        response += " - Target speed updated";
+        if (setSpeed == 0) {
+            throttle = 0;
+            motorServo.writeMicroseconds(1500);
+        }
+    } 
     
+    // --- STEER COMMANDS ---
+    // Note: Since we removed gain scheduling, all AKP commands update one variable
+    else if (incoming.startsWith("AKP")) {
+        //float steer_kp_val;
+        if (incoming.startsWith("AKPslow")) {
+            AKp_slow = incoming.substring(7).toFloat();
+        } else if (incoming.startsWith("AKPfast")) {
+            AKp_fast = incoming.substring(7).toFloat();
+        } else {
+            AKp = incoming.substring(3).toFloat();
+        }
+        //steer_kp = steer_kp_val; // Unified variable for steering KP
+        response += " - Steer KP updated (No scheduling)";
+    } 
+    else if (incoming.startsWith("AKI")) {
+        float ki_val = incoming.substring(3).toFloat();
+        AKi = ki_val; // Assign to your speed PID I variable
+        response += " - Steer KI updated";
+    } 
+    else if (incoming.startsWith("AKD")) {
+        float kd_val = incoming.substring(3).toFloat();
+        AKd = kd_val; // Assign to your speed PID D variable
+        response += " - Steer KD updated";
+    }
+    else if (incoming.startsWith("A")) {
+        steerAngle = incoming.substring(1).toFloat();
+        steerServo.write(steerAngle);
+        response += " - Steer angle updated";
+    }
     // Send the response back to the Rock 4
     Serial.println(response);
+    Serial.println("current PID parameters:");
+    Serial.print("SKP: ");
+    Serial.println(Kp);
+    Serial.print("SKI: ");
+    Serial.println(Ki);
+    Serial.print("SKD: ");
+    Serial.println(Kd);
+    Serial.print("AKP: ");
+    Serial.println(AKp);
+    Serial.print("AKI: ");
+    Serial.println(AKi);
+    Serial.print("AKD: ");
+    Serial.println(AKd);
   }
 }
